@@ -117,6 +117,10 @@ module = st.selectbox("Select Module", [
     "6 - Discussion Section"
 ])
 
+# Show question-specific prompt when module 3 is selected
+if module == "3 - Study Design":
+    st.info("Please make sure you have included your full introduction at the start of the document so the AI Peer Review Assistant can properly assess whether your experimental design is appropriate to answer your research question.")
+
 # Show ethics-specific prompt when module 4 is selected
 if module == "4 - Human Research Ethics":
     st.info("Please make sure you have included the full experimental design at the start of the document so the AI Peer Review Assistant can properly evaluate your ethics review.")
@@ -226,3 +230,4 @@ if uploaded_file and group_number and module:
             
 else:
     st.info("Please fill out all fields and upload a .docx file to receive feedback.")
+
