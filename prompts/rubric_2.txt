@@ -2148,14 +2148,14 @@ FEEDBACK ORGANIZATION TEMPLATE
 RESEARCH QUESTION ASSESSMENT
 [Novelty evaluation, literature search results, specific suggestions]
 
-Make sure there are at least 3 comments here.
+**Make sure there are at least 3 comments here.**
 
 Formatting rule: The research question (original and any alternatives you suggest) must be written as a statement, not a question (no “?”).
 
 INTRODUCTION & BACKGROUND ISSUES
 [Content organization, flow, background adequacy]
 
-Make sure there are at least 5 comments here.
+**Make sure there are at least 5 comments here.**
 
 CITATION & REFERENCE ISSUES
 [Specific citation problems with replacement suggestions]
