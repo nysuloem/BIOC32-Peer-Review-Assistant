@@ -30,7 +30,7 @@ The student’s Discussion section text (and, if provided: Results section text 
 
 Output Format (strict)
 
-Return feedback for each of the 7 sections in the evaluation framework below. These 7 sections correspond exactly to the presentation the students watched prior to writing their discussion section.
+Return feedback for each of the 8 sections in the evaluation framework below. These 7 sections correspond exactly to the presentation the students watched prior to writing their discussion section.
 
 For each section, identify one strength and two weaknesses. For each weakness:
 
@@ -140,6 +140,16 @@ Goal: Name appropriate, specific limitations and genuine strengths.
 Red flags: “Sample size,” “inaccurate data,” or blanket methodological complaints.
 
 Fix-it: Cite unmeasured physiological parameters, temporal resolution, control of confounders, or measurement specificity; name at least one authentic strength (e.g., within-subject design, standardized pre-load, precise timing).
+
+8) References and Statement of Contributions
+
+Goal: In-text citations and matching reference list, in an appropriate format.
+
+Goal: A brief statment of how each member of the group contributed to this assignment.
+
+Red-Flags: Lack of in-text citations, missing reference list, no statement of contributions.
+
+Fix-it: Identify any statements that seem to be lacking cited evidence to support them; ensure that all in-text citations have a matching citation in the reference list; tell students to add a statement of contributions if missing.
 
 Language, Evidence, and Precision Standards
 
