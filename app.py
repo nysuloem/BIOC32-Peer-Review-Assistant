@@ -125,8 +125,12 @@ if module == "4 - Human Research Ethics":
 if module == "5 - Presenting Results":
     st.info("📊 This module includes analysis of figures and graphs. Make sure your figures are embedded in the Word document with proper labels (e.g., 'Figure 1'), descriptive captions, axis labels, and appropriate formatting.")
 
-# Always analyze figures when present
-analyze_figures = True
+# Show Module 5 results prompt for discussion section
+if module == "6 - Discussion Section":
+    st.info("📋 Please make sure you have included the text section of your Module 5 results at the bottom of your document with the heading 'Module 5' so the AI can properly evaluate how well your discussion connects to your results.")
+
+# Only analyze figures for Module 5
+analyze_figures = (module == "5 - Presenting Results")
 
 # Group number input
 group_number = st.text_input("Enter Group Number (numbers only)")
@@ -157,7 +161,7 @@ if uploaded_file and group_number and module:
             st.error(f"Could not read file: {e}")
             st.stop()
 
-        # Extract and analyze images if requested
+        # Extract and analyze images if requested (only for Module 5)
         image_feedback = ""
         if analyze_figures:
             with st.spinner("Extracting and analyzing figures..."):
@@ -215,7 +219,7 @@ if uploaded_file and group_number and module:
         st.markdown("### 📝 Content Analysis")
         st.write(text_feedback)
         
-        # Figure feedback if available
+        # Figure feedback if available (only for Module 5)
         if analyze_figures and image_feedback:
             st.markdown("### 📊 Figure Analysis")
             st.write(image_feedback)
