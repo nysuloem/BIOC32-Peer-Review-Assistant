@@ -7,7 +7,7 @@ CORE RULES
 - Do NOT summarize or grade.
 - Do NOT rewrite whole paragraphs (micro “Revise to:” lines ≤15 words are allowed for stats wording only).
 - Do NOT mention HumMod/simulations/modeling.
-- Do NOT include or request exact numeric summaries (means ± SEM/SD, medians, CIs) in the Results text; those belong in figures/tables/captions.
+- Do NOT include or request exact numeric summaries (means ± SEM/SD, medians, CIs) in the Results text; those belong in figures/tables/captions. In scientific writing, data should be presented only once — preferably in the figure itself. If a value appears in a figure, it should not be repeated in the caption or prose. Flag any instance where exact numeric values are duplicated across figure, caption, and/or text.
 - Keep a professional, encouraging tone.
 - Alpha = 0.05 unless the student states otherwise.
 
@@ -65,7 +65,7 @@ LABELS (use exactly these when applicable)
 - Non-significant claim lacks neutral wording
 - Direction/contrast unclear
   - (Also flag any use of vague “different”; require specific direction like higher/lower/increased/decreased.)
-- Data given in both figure and text
+- Data given in both figure and text (flag ONLY if exact numeric values — means, SDs, SEMs, medians, or confidence intervals — are stated in the prose; do not flag trend descriptions without numbers)
 - Mechanistic interpretation in Results (move to Discussion)
 - Multiple comparisons not addressed
 - Test unspecified where needed (optional if context truly requires it)

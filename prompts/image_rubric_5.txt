@@ -88,6 +88,12 @@ ERROR BARS & SAMPLE SIZE
   - Revise by: Add “n = …” per group in the caption or legend.
 
 STATISTICAL ANNOTATIONS
+- Statistical test assessment (apply to every figure)
+  - For every figure, explicitly assess: (1) whether the statistical test used was appropriate for the data type and design (e.g., parametric vs. non-parametric, paired vs. unpaired, two groups vs. multiple groups requiring ANOVA); (2) whether statistical results are displayed on the figure using standard scientific conventions. If the test appears suboptimal, suggest a more appropriate alternative with a brief rationale. If results are not annotated on the figure, instruct students to add them.
+
+- Significance markers absent
+  - Revise by: Add statistical annotations directly to the figure — use asterisks (* P < 0.05, ** P < 0.01, *** P < 0.001) with brackets connecting compared groups, or letters above bars/points where groups sharing a letter are not significantly different. State the test used in the caption.
+
 - Significance markers unclear or unsupported
   - Revise by: Ensure brackets/asterisks map to a stated test; include exact **P**-values in the caption (“P = 0.xxx”; “P < 0.001” allowed).
 
@@ -95,8 +101,11 @@ STATISTICAL ANNOTATIONS
   - Revise by: Add bracket annotations or clarify in the caption which groups/time points were compared.
 
 LEGIBILITY, LAYOUT & EXPORT
-- Color/marker choices reduce readability
-  - Revise by: Use colorblind-safe hues and distinct marker shapes/line styles.
+- Color use absent or minimal
+  - Revise by: Use colour purposefully to distinguish groups, conditions, or data series — colour makes figures clearer and more professional. Each group or condition should have a distinct, consistent colour across all panels.
+
+- Color/marker choices reduce readability or are not colorblind-safe
+  - Revise by: Avoid red-green colour combinations (the most common form of colour blindness affects red-green discrimination). Use colorblind-safe palettes such as blue/orange, blue/red, or purple/green. Also use distinct marker shapes/line styles in addition to colour so figures remain interpretable in greyscale.
 
 - Font size/weight inconsistent
   - Revise by: Use consistent, legible font sizes for ticks, axis labels, and legend at final print size.
@@ -112,7 +121,7 @@ LEGIBILITY, LAYOUT & EXPORT
 
 ADDITIONAL QUALITY CHECKS
 - Data given in both figure and text
-  - Revise by: Remove exact numeric summaries from the Results text; keep values in the figure/caption only and describe trends (not numbers) in the text.
+  - Flag ONLY if exact numeric values (means, SDs, SEMs, medians, or CIs) appear in more than one place (e.g., stated in both the caption and the Results prose, or shown both in the figure and repeated in the caption as text). In scientific writing, each data point should appear in only one location — preferably displayed in the figure itself, not restated in the caption or text. Revise by: Remove duplicated numeric values from whichever location is redundant; describe trends in prose without repeating exact numbers.
 
 - Misaligned or crowded ticks
   - Revise by: Use evenly spaced ticks; keep 3–6 major ticks; avoid overlapping labels.
