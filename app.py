@@ -411,47 +411,24 @@ def admin_panel():
 # Main app
 # ─────────────────────────────────────────────
 
-def main_app():
-    """Main application interface."""
-    st.title("AI Peer Reviewer for BIOC32")
-    st.markdown(
-        "This AI Peer Reviewer will provide feedback to help you improve your submission "
-        "before it is evaluated by the teaching assistants. It will not provide a grade for your submission."
-    )
-
-    # Module selection
-    module = st.selectbox("Select Module", [
-        "2 - Research Questions",
-        "3 - Study Design",
-        "4 - Human Research Ethics",
-        "5 - Presenting Results",
-        "6 - Discussion Section"
-    ])
-
-    if module == "3 - Study Design":
-        st.info("Please make sure you have included your full introduction at the start of the document so the AI Peer Review Assistant can properly assess whether your experimental design is appropriate to answer your research question.")
-    if module == "4 - Human Research Ethics":
-        st.info("Please make sure you have included the full experimental design at the start of the document so the AI Peer Review Assistant can properly evaluate your ethics review.")
-    if module == "5 - Presenting Results":
-        st.info("This module includes analysis of figures and graphs. Make sure your figures are embedded in the document with proper labels (e.g., 'Figure 1'), descriptive captions, axis labels, and appropriate formatting.")
-    if module == "6 - Discussion Section":
-        st.info("Please make sure you have your full results (text and figures) at the start of the document so the AI Peer Review Assistant can evaluate your interpretation of the results.")
-
-    analyze_figures = (module == "5 - Presenting Results")
-
-    # ── Submission method tabs ──
-    tab_docx, tab_pdf, tab_gdoc = st.tabs(["📄 Upload Word (.docx)", "📑 Upload PDF", "🔗 Google Docs link"])
-
+# ── Helper: read text (and optionally images) from any supported source ──
+def read_document(file_obj=None, file_type="docx", analyze_figures=False, key_prefix=""):
+    """Read text and images from a docx, pdf, or return None if nothing provided."""
     full_text = None
     images = []
     source_label = ""
 
-    # ── Tab 1: Word upload ──
+    tab_docx, tab_pdf, tab_gdoc = st.tabs([
+        "📄 Upload Word (.docx)",
+        "📑 Upload PDF",
+        "🔗 Google Docs link"
+    ])
+
     with tab_docx:
         uploaded_docx = st.file_uploader(
             "Upload your .docx file. If you used Google Docs, use the Google Docs tab instead.",
             type="docx",
-            key="docx_upload"
+            key=f"{key_prefix}_docx"
         )
         if uploaded_docx:
             try:
@@ -463,7 +440,6 @@ def main_app():
             except Exception as e:
                 st.error(f"Could not read Word file: {e}")
 
-    # ── Tab 2: PDF upload ──
     with tab_pdf:
         st.info(
             "PDF support works best for text content. "
@@ -472,7 +448,7 @@ def main_app():
         uploaded_pdf = st.file_uploader(
             "Upload your PDF file.",
             type="pdf",
-            key="pdf_upload"
+            key=f"{key_prefix}_pdf"
         )
         if uploaded_pdf:
             try:
@@ -489,14 +465,17 @@ def main_app():
             except Exception as e:
                 st.error(f"Could not read PDF: {e}")
 
-    # ── Tab 3: Google Docs link ──
     with tab_gdoc:
         st.info(
             "Paste a Google Docs link below. Make sure sharing is set to "
             "**'Anyone with the link can view'** — otherwise the import will fail."
         )
-        gdoc_url = st.text_input("Google Docs URL", placeholder="https://docs.google.com/document/d/...")
-        fetch_button = st.button("Import from Google Docs")
+        gdoc_url = st.text_input(
+            "Google Docs URL",
+            placeholder="https://docs.google.com/document/d/...",
+            key=f"{key_prefix}_gdoc_url"
+        )
+        fetch_button = st.button("Import from Google Docs", key=f"{key_prefix}_gdoc_btn")
 
         if fetch_button and gdoc_url:
             doc_id = extract_gdoc_id(gdoc_url)
@@ -517,11 +496,83 @@ def main_app():
                 except Exception as e:
                     st.error(f"Could not import Google Doc: {e}")
 
+    return full_text, images, source_label
+
+
+def main_app():
+    """Main application interface."""
+    st.title("AI Peer Reviewer for BIOC32")
+    st.markdown(
+        "This AI Peer Reviewer will provide feedback to help you improve your submission "
+        "before it is evaluated by the teaching assistants. It will not provide a grade for your submission."
+    )
+
+    # ── Module selection ──
+    module = st.selectbox("Select Module", [
+        "2 - Research Questions",
+        "3 - Study Design",
+        "4 - Human Research Ethics",
+        "5 - Presenting Results",
+        "6 - Discussion Section"
+    ])
+
+    analyze_figures = (module == "5 - Presenting Results")
+
+    # ── Prior module config ──
+    prior_module_map = {
+        "3 - Study Design":        ("2 - Research Questions",  "Module 2 (Research Questions)"),
+        "4 - Human Research Ethics":("3 - Study Design",       "Module 3 (Study Design)"),
+        "5 - Presenting Results":  ("3 - Study Design",        "Module 3 (Study Design)"),
+        "6 - Discussion Section":  ("5 - Presenting Results",  "Module 5 (Presenting Results)"),
+    }
+    needs_prior = module in prior_module_map
+
+    # ── Context-specific instructions ──
+    if module == "3 - Study Design":
+        st.info("Upload your approved Module 2 submission below, then upload your Module 3 submission. The reviewer will use your approved research question to assess whether your study design will answer it.")
+    elif module == "4 - Human Research Ethics":
+        st.info("Upload your approved Module 3 submission below, then upload your Module 4 submission. The reviewer will use your study design to evaluate your ethics review.")
+    elif module == "5 - Presenting Results":
+        st.info("Upload your approved Module 3 submission below, then upload your Module 5 submission. The reviewer will use your study design to assess whether your results and figures are appropriate. Make sure figures are embedded in your document.")
+    elif module == "6 - Discussion Section":
+        st.info("Upload your approved Module 5 submission below, then upload your Module 6 submission. The reviewer will use your results to evaluate how well your discussion interprets them.")
+
+    # ── Prior module upload (required for modules 3–6) ──
+    prior_text = None
+    if needs_prior:
+        _, prior_label = prior_module_map[module]
+        st.markdown(f"### Step 1: Upload your approved {prior_label} submission")
+        prior_text, _, _ = read_document(key_prefix="prior", analyze_figures=False)
+        if prior_text is None:
+            st.warning(f"⚠️ You must upload your approved {prior_label} submission before the reviewer can analyze your current module.")
+
+    # ── Current module upload ──
+    current_step = "Step 2" if needs_prior else "Step 1"
+    st.markdown(f"### {current_step}: Upload your {module} submission")
+    full_text, images, source_label = read_document(key_prefix="current", analyze_figures=analyze_figures)
+
+    # ── Block if prior module missing ──
+    if needs_prior and full_text and prior_text is None:
+        st.error(f"❌ Please upload your approved {prior_module_map[module][1]} submission above before submitting.")
+        st.stop()
+
     # ── Analysis ──
     if full_text:
         if not full_text.strip():
             st.warning("The document appears to be empty. Please check your file and try again.")
         else:
+            # Combine prior + current text for the API
+            if needs_prior and prior_text:
+                _, prior_label = prior_module_map[module]
+                combined_text = (
+                    f"=== PREVIOUSLY APPROVED SUBMISSION: {prior_label} ===\n"
+                    f"{prior_text}\n\n"
+                    f"=== CURRENT SUBMISSION UNDER REVIEW: {module} ===\n"
+                    f"{full_text}"
+                )
+            else:
+                combined_text = full_text
+
             # Figure analysis (Module 5 only)
             image_feedback = ""
             if analyze_figures:
@@ -549,8 +600,8 @@ def main_app():
                 st.error("Rubric prompt file not found. Please check the prompts directory.")
                 st.stop()
 
-            # Call OpenAI — Module 2 uses web search for live literature lookup;
-            # all other modules use standard gpt-4-turbo.
+            # Call OpenAI — Module 2 uses Responses API with web search;
+            # all other modules use Chat Completions with gpt-4-turbo.
             try:
                 if module == "2 - Research Questions":
                     with st.spinner("Analyzing content and searching recent literature — this may take up to 30 seconds..."):
@@ -559,7 +610,7 @@ def main_app():
                             tools=[{"type": "web_search_preview"}],
                             instructions=rubric_prompt,
                             input=(
-                                f"{full_text}\n\n"
+                                f"{combined_text}\n\n"
                                 "IMPORTANT: Before providing feedback, search the web for recent "
                                 "peer-reviewed literature (2019–present) directly related to this "
                                 "research question. Use your search results to: (1) assess whether "
@@ -569,7 +620,6 @@ def main_app():
                                 "errors in the background the students have written."
                             )
                         )
-                        # Extract text from the Responses API output array
                         text_feedback = ""
                         for block in response.output:
                             if hasattr(block, "content"):
@@ -584,7 +634,7 @@ def main_app():
                             model="gpt-4-turbo",
                             messages=[
                                 {"role": "system", "content": rubric_prompt},
-                                {"role": "user", "content": full_text}
+                                {"role": "user", "content": combined_text}
                             ]
                         )
                         text_feedback = response.choices[0].message.content
@@ -605,11 +655,8 @@ def main_app():
                 st.markdown("### 📊 Figure Analysis")
                 st.write(image_feedback)
 
-    elif not any([
-        st.session_state.get("docx_upload"),
-        st.session_state.get("pdf_upload"),
-    ]):
-        st.info("Please select a module and submit your document using one of the tabs above.")
+    else:
+        st.info("Please upload your document(s) above to receive feedback.")
 
 
 # ─────────────────────────────────────────────
