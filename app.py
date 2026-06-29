@@ -658,6 +658,44 @@ def main_app():
                                         text_feedback += content_block.text
                         if not text_feedback:
                             text_feedback = "No feedback was generated. Please try again."
+                elif module == "4 - Human Research Ethics":
+                    with st.spinner("Analyzing ethics review and searching for supporting literature — this may take up to 30 seconds..."):
+                        response = openai.responses.create(
+                            model="gpt-4o",
+                            tools=[{"type": "web_search_preview"}],
+                            instructions=rubric_prompt,
+                            input=(
+                                f"{combined_text}\n\n"
+                                "IMPORTANT: Where the students have proposed mitigations or monitoring thresholds for harms, search the web for peer-reviewed literature (2019-present) that supports or challenges those thresholds and protocols. Embed relevant citations (authors, journal, year, DOI) directly within the specific issues where they strengthen or correct the students' rationale. Also search for any clinical guidelines or published safety protocols relevant to the study population or intervention described."
+                            )
+                        )
+                        text_feedback = ""
+                        for block in response.output:
+                            if hasattr(block, "content"):
+                                for content_block in block.content:
+                                    if hasattr(content_block, "text"):
+                                        text_feedback += content_block.text
+                        if not text_feedback:
+                            text_feedback = "No feedback was generated. Please try again."
+                elif module == "6 - Discussion Section":
+                    with st.spinner("Analyzing discussion and searching for relevant literature — this may take up to 30 seconds..."):
+                        response = openai.responses.create(
+                            model="gpt-4o",
+                            tools=[{"type": "web_search_preview"}],
+                            instructions=rubric_prompt,
+                            input=(
+                                f"{combined_text}\n\n"
+                                "IMPORTANT: Search the web for recent peer-reviewed literature (2019-present) relevant to the physiological mechanisms and findings discussed by the students. For each weakness you identify — particularly where mechanistic reasoning is shallow, a claim lacks support, or an interpretation could be strengthened — embed a real citation (authors, journal, year, DOI) that the students could use to deepen their discussion. Prioritise primary research articles and reviews that directly address the variables and population in the submission."
+                            )
+                        )
+                        text_feedback = ""
+                        for block in response.output:
+                            if hasattr(block, "content"):
+                                for content_block in block.content:
+                                    if hasattr(content_block, "text"):
+                                        text_feedback += content_block.text
+                        if not text_feedback:
+                            text_feedback = "No feedback was generated. Please try again."
                 else:
                     with st.spinner("Analyzing content..."):
                         response = openai.chat.completions.create(
