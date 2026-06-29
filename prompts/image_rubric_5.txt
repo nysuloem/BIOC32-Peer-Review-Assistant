@@ -30,7 +30,8 @@ GENERAL RULES
 FIGURE/PANEL DETECTION & GROUPING
 - Detect figures by “Figure”, “Fig.”, or “FIGURE” followed by a number (e.g., Figure 1).
 - Treat multi-panel references (A, B, C…) as one figure group. Heading example: “**Figure 1 (Panels A–C) — Issues to Fix**”.
-- If a figure has no issues, write the heading and then: “No issues detected under this checklist.”
+- You MUST produce a feedback block for EVERY figure present in the submission. Count all figures before writing feedback, then work through each one in order. Do not stop after Figure 1.
+- If a figure meets all checklist criteria and has no issues, write the heading followed by a brief positive statement explicitly naming what the figure does well (e.g., "This figure meets all checklist criteria. Individual data points are shown, mean ± SD is displayed, the Y-axis range matches the data, group coding is clear, and statistical annotations are present. Well done."). Do not just write "No issues detected."
 
 OUTPUT FORMAT (per figure block)
 For each figure (grouping its panels), produce:
@@ -88,8 +89,13 @@ ERROR BARS & SAMPLE SIZE
   - Revise by: Add “n = …” per group in the caption or legend.
 
 STATISTICAL ANNOTATIONS
-- Statistical test assessment (apply to every figure)
-  - For every figure, explicitly assess: (1) whether the statistical test used was appropriate for the data type and design (e.g., parametric vs. non-parametric, paired vs. unpaired, two groups vs. multiple groups requiring ANOVA); (2) whether statistical results are displayed on the figure using standard scientific conventions. If the test appears suboptimal, suggest a more appropriate alternative with a brief rationale. If results are not annotated on the figure, instruct students to add them.
+- Statistical test assessment (MANDATORY — apply to every figure)
+  - For every figure, you must include an explicit verdict on the statistical test. State:
+    (1) Which test was used (as named in the caption or Results text).
+    (2) A clear verdict: APPROPRIATE or NOT APPROPRIATE.
+    (3) Your reasoning: consider whether the data are parametric or non-parametric, paired or unpaired, two-group or multi-group. If multiple t-tests were run instead of ANOVA, flag this.
+    (4) If not appropriate: name the correct alternative test and explain in 1-2 sentences why it is better suited.
+    (5) Whether the statistical results are shown on the figure using standard conventions (asterisks with brackets, letters above bars, or P-values in the caption). If absent, instruct students to add them.
 
 - Significance markers absent
   - Revise by: Add statistical annotations directly to the figure — use asterisks (* P < 0.05, ** P < 0.01, *** P < 0.001) with brackets connecting compared groups, or letters above bars/points where groups sharing a letter are not significantly different. State the test used in the caption.
@@ -127,7 +133,8 @@ ADDITIONAL QUALITY CHECKS
   - Revise by: Use evenly spaced ticks; keep 3–6 major ticks; avoid overlapping labels.
 
 END BEHAVIOR
-- Output one block per figure, grouping all panels for that figure.
+- Output one block per figure, grouping all panels for that figure. You MUST produce a block for every figure in the submission — never stop after Figure 1.
+- For figures with no issues, write a brief positive statement naming specific strengths (e.g., data transparency, colour choices, axis scaling, statistical annotations) rather than a generic "no issues" line.
 - If no figures are detected in the submission, output: **Figures Checklist — Issues to Fix** followed by “No figures detected.”
 
 === END PEER-REVIEW POLICY ===
