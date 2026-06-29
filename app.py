@@ -554,35 +554,30 @@ def main_app():
             try:
                 if module == "2 - Research Questions":
                     with st.spinner("Analyzing content and searching recent literature — this may take up to 30 seconds..."):
-                        response = openai.chat.completions.create(
+                        response = openai.responses.create(
                             model="gpt-4o",
-                            tools=[{"type": "web_search_preview_2025_03_11"}],
-                            tool_choice="auto",
-                            messages=[
-                                {"role": "system", "content": rubric_prompt},
-                                {
-                                    "role": "user",
-                                    "content": (
-                                        f"{full_text}\n\n"
-                                        "IMPORTANT: Before providing feedback, search the web for recent "
-                                        "peer-reviewed literature (2019–present) directly related to this "
-                                        "research question. Use your search results to: (1) assess whether "
-                                        "this question has already been answered, (2) provide 2–4 real, "
-                                        "specific citations (with authors, journal, year, and DOI or URL) "
-                                        "that students could read or cite, and (3) identify any factual "
-                                        "errors in the background the students have written."
-                                    )
-                                }
-                            ]
+                            tools=[{"type": "web_search_preview"}],
+                            instructions=rubric_prompt,
+                            input=(
+                                f"{full_text}\n\n"
+                                "IMPORTANT: Before providing feedback, search the web for recent "
+                                "peer-reviewed literature (2019–present) directly related to this "
+                                "research question. Use your search results to: (1) assess whether "
+                                "this question has already been answered, (2) provide 2–4 real, "
+                                "specific citations (with authors, journal, year, and DOI or URL) "
+                                "that students could read or cite, and (3) identify any factual "
+                                "errors in the background the students have written."
+                            )
                         )
-                        # Extract the final text response — may follow tool_use blocks
+                        # Extract text from the Responses API output array
                         text_feedback = ""
-                        for block in response.choices[0].message.content if isinstance(response.choices[0].message.content, list) else []:
-                            if hasattr(block, "text"):
-                                text_feedback += block.text
-                        # Fallback: some response formats return content as a plain string
+                        for block in response.output:
+                            if hasattr(block, "content"):
+                                for content_block in block.content:
+                                    if hasattr(content_block, "text"):
+                                        text_feedback += content_block.text
                         if not text_feedback:
-                            text_feedback = response.choices[0].message.content or ""
+                            text_feedback = "No feedback was generated. Please try again."
                 else:
                     with st.spinner("Analyzing content..."):
                         response = openai.chat.completions.create(
