@@ -635,6 +635,29 @@ def main_app():
                                         text_feedback += content_block.text
                         if not text_feedback:
                             text_feedback = "No feedback was generated. Please try again."
+                elif module == "3 - Study Design":
+                    with st.spinner("Analyzing study design and searching for comparable studies — this may take up to 30 seconds..."):
+                        response = openai.responses.create(
+                            model="gpt-4o",
+                            tools=[{"type": "web_search_preview"}],
+                            instructions=rubric_prompt,
+                            input=(
+                                f"{combined_text}\n\n"
+                                "IMPORTANT: Search the web for 2-3 real published studies that used "
+                                "a similar experimental design to the one proposed (similar intervention, "
+                                "population, or outcome measures). Cite each study fully (authors, journal, "
+                                "year, DOI) and explain specifically what the students can learn from it "
+                                "to improve their design."
+                            )
+                        )
+                        text_feedback = ""
+                        for block in response.output:
+                            if hasattr(block, "content"):
+                                for content_block in block.content:
+                                    if hasattr(content_block, "text"):
+                                        text_feedback += content_block.text
+                        if not text_feedback:
+                            text_feedback = "No feedback was generated. Please try again."
                 else:
                     with st.spinner("Analyzing content..."):
                         response = openai.chat.completions.create(
