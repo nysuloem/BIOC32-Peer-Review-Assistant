@@ -520,10 +520,17 @@ def main_app():
 
     # ── Prior module config ──
     prior_module_map = {
-        "3 - Study Design":        ("2 - Research Questions",  "Module 2 (Research Questions)"),
-        "4 - Human Research Ethics":("3 - Study Design",       "Module 3 (Study Design)"),
-        "5 - Presenting Results":  ("3 - Study Design",        "Module 3 (Study Design)"),
-        "6 - Discussion Section":  ("5 - Presenting Results",  "Module 5 (Presenting Results)"),
+        "3 - Study Design":          ("2 - Research Questions",   "Module 2 (Research Questions)"),
+        "4 - Human Research Ethics": ("3 - Study Design",         "Module 3 (Study Design)"),
+        "5 - Presenting Results":    ("3 - Study Design",         "Module 3 (Study Design)"),
+        "6 - Discussion Section":    ("5 - Presenting Results",   "Module 5 (Presenting Results)"),
+    }
+    friendly_module_name = {
+        "2 - Research Questions":    "Module 2 (Research Questions)",
+        "3 - Study Design":          "Module 3 (Study Design)",
+        "4 - Human Research Ethics": "Module 4 (Human Research Ethics)",
+        "5 - Presenting Results":    "Module 5 (Presenting Results)",
+        "6 - Discussion Section":    "Module 6 (Discussion Section)",
     }
     needs_prior = module in prior_module_map
 
@@ -547,8 +554,8 @@ def main_app():
             st.warning(f"⚠️ You must upload your approved {prior_label} submission before the reviewer can analyze your current module.")
 
     # ── Current module upload ──
-    current_step = "Step 2" if needs_prior else "Step 1"
-    st.markdown(f"### {current_step}: Upload your {module} submission")
+    if needs_prior:
+        st.markdown(f"### Step 2: Upload your {friendly_module_name[module]} submission")
     full_text, images, source_label = read_document(key_prefix="current", analyze_figures=analyze_figures)
 
     # ── Block if prior module missing ──
