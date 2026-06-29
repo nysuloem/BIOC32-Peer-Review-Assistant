@@ -590,11 +590,79 @@ def main_app():
             else:
                 combined_text = full_text
 
-            # Figure analysis (Module 5 only)
-            image_feedback = ""
-            if analyze_figures:
-                with st.spinner("Extracting and analyzing figures..."):
-                    try:
+            # ── Load rubric ──
+            rubric_file_path = f"prompts/rubric_{module.split(' ')[0]}.txt"
+            try:
+                with open(rubric_file_path, 'r', encoding='utf-8') as f:
+                    rubric_prompt = f.read()
+            except FileNotFoundError:
+                st.error("Rubric prompt file not found. Please check the prompts directory.")
+                st.stop()
+
+            # ── Module 5: three separate API calls for three distinct feedback sections ──
+            if module == "5 - Presenting Results":
+                stats_feedback = ""
+                results_text_feedback = ""
+                image_feedback = ""
+
+                # ── Part 1: Statistical Analysis Assessment ──
+                stats_rubric = (
+                    "You are a peer reviewer for a third-year human physiology course. "
+                    "Your task is ONLY to assess the statistical analysis used in this submission. "
+                    "Produce a clearly labelled section titled \'## Part 1: Statistical Analysis Assessment\'. "
+                    "You must: (1) identify which statistical test(s) were used; "
+                    "(2) give an explicit verdict — APPROPRIATE or NOT APPROPRIATE — for each test; "
+                    "(3) explain your reasoning considering data type, distribution, group structure (paired/unpaired, 2-group vs multi-group); "
+                    "(4) if not appropriate, name the correct alternative and explain why in 1-2 sentences; "
+                    "(5) if no test is mentioned, state this clearly as a major problem and direct students "
+                    "to the Data Visualization and Analysis Tool on the Quercus page for this course. "
+                    "Do not comment on writing style, figures, or anything other than the statistical approach."
+                )
+                try:
+                    with st.spinner("Part 1 of 3: Assessing statistical analysis..."):
+                        r1 = openai.chat.completions.create(
+                            model="gpt-4-turbo",
+                            messages=[
+                                {"role": "system", "content": stats_rubric},
+                                {"role": "user", "content": combined_text}
+                            ]
+                        )
+                        stats_feedback = r1.choices[0].message.content
+                except Exception as e:
+                    stats_feedback = f"Statistical analysis assessment unavailable: {e}"
+
+                # ── Part 2: Results Text Assessment ──
+                results_rubric = (
+                    "You are a peer reviewer for a third-year human physiology course. "
+                    "Your task is ONLY to assess the written Results text (not figures, not stats methods). "
+                    "Produce a clearly labelled section titled \'## Part 2: Results Text Assessment\'. "
+                    "Evaluate whether the Results text: "
+                    "(1) adequately guides the reader through the main findings in a logical order; "
+                    "(2) describes trends and directions clearly (e.g., increased, decreased, no change) without repeating exact numeric values already shown in figures; "
+                    "(3) uses correct statistical language — significant findings reported as \'significantly higher/lower (P = 0.xxx)\', "
+                    "non-significant findings as \'no significant difference (P = 0.xxx)\'; "
+                    "(4) avoids mechanistic interpretation (that belongs in the Discussion); "
+                    "(5) references each figure at the appropriate point in the narrative. "
+                    "For each issue: quote the relevant sentence, explain the problem, and provide a suggested rewrite. "
+                    "If the results text is well-written, say so explicitly and identify what it does well. "
+                    "Do not comment on figures or statistical test choice — only the prose."
+                )
+                try:
+                    with st.spinner("Part 2 of 3: Assessing results text..."):
+                        r2 = openai.chat.completions.create(
+                            model="gpt-4-turbo",
+                            messages=[
+                                {"role": "system", "content": results_rubric},
+                                {"role": "user", "content": combined_text}
+                            ]
+                        )
+                        results_text_feedback = r2.choices[0].message.content
+                except Exception as e:
+                    results_text_feedback = f"Results text assessment unavailable: {e}"
+
+                # ── Part 3: Figure Assessment ──
+                try:
+                    with st.spinner("Part 3 of 3: Assessing figures..."):
                         if images:
                             st.success(f"Found {len(images)} figure(s) in the document.")
                             image_feedback = analyze_images_with_gpt4_vision(images, module)
@@ -604,134 +672,133 @@ def main_app():
                                 "If you have figures, make sure they are properly embedded "
                                 f"in your {source_label}."
                             )
-                    except Exception as e:
-                        st.warning(f"Could not analyze figures: {e}")
-                        image_feedback = "Figure analysis was not available for this submission."
+                except Exception as e:
+                    image_feedback = f"Figure assessment unavailable: {e}"
 
-            # Load rubric
-            rubric_file_path = f"prompts/rubric_{module.split(' ')[0]}.txt"
-            try:
-                with open(rubric_file_path, 'r', encoding='utf-8') as f:
-                    rubric_prompt = f.read()
-            except FileNotFoundError:
-                st.error("Rubric prompt file not found. Please check the prompts directory.")
-                st.stop()
+                # ── Log and display ──
+                log_submission(module, "N/A", True)
+                st.success("✅ Submission Successfully Reviewed. See Feedback Below.")
+                st.subheader("Peer Review Feedback")
 
-            # Call OpenAI — Module 2 uses Responses API with web search;
-            # all other modules use Chat Completions with gpt-4-turbo.
-            try:
-                if module == "2 - Research Questions":
-                    with st.spinner("Analyzing content and searching recent literature — this may take up to 30 seconds..."):
-                        response = openai.responses.create(
-                            model="gpt-4o",
-                            tools=[{"type": "web_search_preview"}],
-                            instructions=rubric_prompt,
-                            input=(
-                                f"{combined_text}\n\n"
-                                "IMPORTANT: Before providing feedback, search the web for recent "
-                                "peer-reviewed literature (2019–present) directly related to this "
-                                "research question. Use your search results to: (1) assess whether "
-                                "this question has already been answered, (2) provide 2–4 real, "
-                                "specific citations (with authors, journal, year, and DOI or URL) "
-                                "that students could read or cite, and (3) identify any factual "
-                                "errors in the background the students have written."
+                with st.expander("## 📊 Part 1: Statistical Analysis Assessment", expanded=True):
+                    st.write(stats_feedback)
+
+                with st.expander("## 📝 Part 2: Results Text Assessment", expanded=True):
+                    st.write(results_text_feedback)
+
+                with st.expander("## 🖼️ Part 3: Figure Assessment", expanded=True):
+                    st.write(image_feedback)
+
+            else:
+                # ── All other modules: single API call ──
+                image_feedback = ""
+                try:
+                    if module == "2 - Research Questions":
+                        with st.spinner("Analyzing content and searching recent literature — this may take up to 30 seconds..."):
+                            response = openai.responses.create(
+                                model="gpt-4o",
+                                tools=[{"type": "web_search_preview"}],
+                                instructions=rubric_prompt,
+                                input=(
+                                    f"{combined_text}\n\n"
+                                    "IMPORTANT: Before providing feedback, search the web for recent "
+                                    "peer-reviewed literature (2019–present) directly related to this "
+                                    "research question. Use your search results to: (1) assess whether "
+                                    "this question has already been answered, (2) provide 2–4 real, "
+                                    "specific citations (with authors, journal, year, and DOI or URL) "
+                                    "that students could read or cite, and (3) identify any factual "
+                                    "errors in the background the students have written."
+                                )
                             )
-                        )
-                        text_feedback = ""
-                        for block in response.output:
-                            if hasattr(block, "content"):
-                                for content_block in block.content:
-                                    if hasattr(content_block, "text"):
-                                        text_feedback += content_block.text
-                        if not text_feedback:
-                            text_feedback = "No feedback was generated. Please try again."
-                elif module == "3 - Study Design":
-                    with st.spinner("Analyzing study design and searching for comparable studies — this may take up to 30 seconds..."):
-                        response = openai.responses.create(
-                            model="gpt-4o",
-                            tools=[{"type": "web_search_preview"}],
-                            instructions=rubric_prompt,
-                            input=(
-                                f"{combined_text}\n\n"
-                                "IMPORTANT: Search the web for 2-3 real published studies that used "
-                                "a similar experimental design to the one proposed (similar intervention, "
-                                "population, or outcome measures). Cite each study fully (authors, journal, "
-                                "year, DOI) and explain specifically what the students can learn from it "
-                                "to improve their design."
+                            text_feedback = ""
+                            for block in response.output:
+                                if hasattr(block, "content"):
+                                    for content_block in block.content:
+                                        if hasattr(content_block, "text"):
+                                            text_feedback += content_block.text
+                            if not text_feedback:
+                                text_feedback = "No feedback was generated. Please try again."
+                    elif module == "3 - Study Design":
+                        with st.spinner("Analyzing study design and searching for comparable studies — this may take up to 30 seconds..."):
+                            response = openai.responses.create(
+                                model="gpt-4o",
+                                tools=[{"type": "web_search_preview"}],
+                                instructions=rubric_prompt,
+                                input=(
+                                    f"{combined_text}\n\n"
+                                    "IMPORTANT: Search the web for 2-3 real published studies that used "
+                                    "a similar experimental design to the one proposed (similar intervention, "
+                                    "population, or outcome measures). Cite each study fully (authors, journal, "
+                                    "year, DOI) and explain specifically what the students can learn from it "
+                                    "to improve their design."
+                                )
                             )
-                        )
-                        text_feedback = ""
-                        for block in response.output:
-                            if hasattr(block, "content"):
-                                for content_block in block.content:
-                                    if hasattr(content_block, "text"):
-                                        text_feedback += content_block.text
-                        if not text_feedback:
-                            text_feedback = "No feedback was generated. Please try again."
-                elif module == "4 - Human Research Ethics":
-                    with st.spinner("Analyzing ethics review and searching for supporting literature — this may take up to 30 seconds..."):
-                        response = openai.responses.create(
-                            model="gpt-4o",
-                            tools=[{"type": "web_search_preview"}],
-                            instructions=rubric_prompt,
-                            input=(
-                                f"{combined_text}\n\n"
-                                "IMPORTANT: Where the students have proposed mitigations or monitoring thresholds for harms, search the web for peer-reviewed literature (2019-present) that supports or challenges those thresholds and protocols. Embed relevant citations (authors, journal, year, DOI) directly within the specific issues where they strengthen or correct the students' rationale. Also search for any clinical guidelines or published safety protocols relevant to the study population or intervention described."
+                            text_feedback = ""
+                            for block in response.output:
+                                if hasattr(block, "content"):
+                                    for content_block in block.content:
+                                        if hasattr(content_block, "text"):
+                                            text_feedback += content_block.text
+                            if not text_feedback:
+                                text_feedback = "No feedback was generated. Please try again."
+                    elif module == "4 - Human Research Ethics":
+                        with st.spinner("Analyzing ethics review and searching for supporting literature — this may take up to 30 seconds..."):
+                            response = openai.responses.create(
+                                model="gpt-4o",
+                                tools=[{"type": "web_search_preview"}],
+                                instructions=rubric_prompt,
+                                input=(
+                                    f"{combined_text}\n\n"
+                                    "IMPORTANT: Where the students have proposed mitigations or monitoring thresholds for harms, search the web for peer-reviewed literature (2019-present) that supports or challenges those thresholds and protocols. Embed relevant citations (authors, journal, year, DOI) directly within the specific issues where they strengthen or correct the students' rationale. Also search for any clinical guidelines or published safety protocols relevant to the study population or intervention described."
+                                )
                             )
-                        )
-                        text_feedback = ""
-                        for block in response.output:
-                            if hasattr(block, "content"):
-                                for content_block in block.content:
-                                    if hasattr(content_block, "text"):
-                                        text_feedback += content_block.text
-                        if not text_feedback:
-                            text_feedback = "No feedback was generated. Please try again."
-                elif module == "6 - Discussion Section":
-                    with st.spinner("Analyzing discussion and searching for relevant literature — this may take up to 30 seconds..."):
-                        response = openai.responses.create(
-                            model="gpt-4o",
-                            tools=[{"type": "web_search_preview"}],
-                            instructions=rubric_prompt,
-                            input=(
-                                f"{combined_text}\n\n"
-                                "IMPORTANT: Search the web for recent peer-reviewed literature (2019-present) relevant to the physiological mechanisms and findings discussed by the students. For each weakness you identify — particularly where mechanistic reasoning is shallow, a claim lacks support, or an interpretation could be strengthened — embed a real citation (authors, journal, year, DOI) that the students could use to deepen their discussion. Prioritise primary research articles and reviews that directly address the variables and population in the submission."
+                            text_feedback = ""
+                            for block in response.output:
+                                if hasattr(block, "content"):
+                                    for content_block in block.content:
+                                        if hasattr(content_block, "text"):
+                                            text_feedback += content_block.text
+                            if not text_feedback:
+                                text_feedback = "No feedback was generated. Please try again."
+                    elif module == "6 - Discussion Section":
+                        with st.spinner("Analyzing discussion and searching for relevant literature — this may take up to 30 seconds..."):
+                            response = openai.responses.create(
+                                model="gpt-4o",
+                                tools=[{"type": "web_search_preview"}],
+                                instructions=rubric_prompt,
+                                input=(
+                                    f"{combined_text}\n\n"
+                                    "IMPORTANT: Search the web for recent peer-reviewed literature (2019-present) relevant to the physiological mechanisms and findings discussed by the students. For each weakness you identify — particularly where mechanistic reasoning is shallow, a claim lacks support, or an interpretation could be strengthened — embed a real citation (authors, journal, year, DOI) that the students could use to deepen their discussion. Prioritise primary research articles and reviews that directly address the variables and population in the submission."
+                                )
                             )
-                        )
-                        text_feedback = ""
-                        for block in response.output:
-                            if hasattr(block, "content"):
-                                for content_block in block.content:
-                                    if hasattr(content_block, "text"):
-                                        text_feedback += content_block.text
-                        if not text_feedback:
-                            text_feedback = "No feedback was generated. Please try again."
-                else:
-                    with st.spinner("Analyzing content..."):
-                        response = openai.chat.completions.create(
-                            model="gpt-4-turbo",
-                            messages=[
-                                {"role": "system", "content": rubric_prompt},
-                                {"role": "user", "content": combined_text}
-                            ]
-                        )
-                        text_feedback = response.choices[0].message.content
-            except Exception as e:
-                st.error(f"OpenAI API error: {e}")
-                st.stop()
+                            text_feedback = ""
+                            for block in response.output:
+                                if hasattr(block, "content"):
+                                    for content_block in block.content:
+                                        if hasattr(content_block, "text"):
+                                            text_feedback += content_block.text
+                            if not text_feedback:
+                                text_feedback = "No feedback was generated. Please try again."
+                    else:
+                        with st.spinner("Analyzing content..."):
+                            response = openai.chat.completions.create(
+                                model="gpt-4-turbo",
+                                messages=[
+                                    {"role": "system", "content": rubric_prompt},
+                                    {"role": "user", "content": combined_text}
+                                ]
+                            )
+                            text_feedback = response.choices[0].message.content
+                except Exception as e:
+                    st.error(f"OpenAI API error: {e}")
+                    st.stop()
 
-            # Log submission
-            log_submission(module, "N/A", analyze_figures)
-            st.success("✅ Submission Successfully Reviewed. See Feedback Below.")
-
-            # Display feedback
-            st.subheader("Peer Review Feedback")
-            st.markdown("### 📝 Content Analysis")
-            st.write(text_feedback)
-
-            if analyze_figures and image_feedback:
-                st.markdown("### 📊 Figure Analysis")
-                st.write(image_feedback)
+                # ── Log and display ──
+                log_submission(module, "N/A", False)
+                st.success("✅ Submission Successfully Reviewed. See Feedback Below.")
+                st.subheader("Peer Review Feedback")
+                st.markdown("### 📝 Content Analysis")
+                st.write(text_feedback)
 
     else:
         st.info("Please upload your document(s) above to receive feedback.")
