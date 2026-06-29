@@ -383,7 +383,6 @@ def main_app():
     """Main application interface"""
     st.title("AI Peer Reviewer for BIOC32")
     st.markdown("This AI Peer Reviewer will provide feedback to help you improve your submission before it is evaluated by the teaching assistants. It will not provide a grade for your submission.")
-    st.markdown("**Note:** Each group may only submit their work **once per module**. Multiple submissions are not permitted.")
 
     # Dropdown for module selection
     module = st.selectbox("Select Module", [
@@ -404,31 +403,20 @@ def main_app():
 
     # Show figure-specific prompt for results module
     if module == "5 - Presenting Results":
-        st.info("📊 This module includes analysis of figures and graphs. Make sure your figures are embedded in the Word document with proper labels (e.g., 'Figure 1'), descriptive captions, axis labels, and appropriate formatting.")
+        st.info("This module includes analysis of figures and graphs. Make sure your figures are embedded in the Word document with proper labels (e.g., 'Figure 1'), descriptive captions, axis labels, and appropriate formatting.")
 
     # Show Module 5 results prompt for discussion section
     if module == "6 - Discussion Section":
-        st.info("📋 Please make sure you have included the text section of your Module 5 results at the bottom of your document with the heading 'Module 5' so the AI can properly evaluate how well your discussion connects to your results.")
+        st.info("Please make sure you have your full results (text and figures) at the start of the document so the AI Peer Review Assistant can evaluate your interpretation of the results.")
 
     # Only analyze figures for Module 5
     analyze_figures = (module == "5 - Presenting Results")
 
-    # Group number input
-    group_number = st.text_input("Enter Group Number (numbers only)")
-
     # File upload
     uploaded_file = st.file_uploader("Upload your .docx file (Word only). If you used Google Docs, download it as a Word file first and upload it here.", type="docx")
 
-    # Check for duplicate submission
-    submission_blocked = False
-    if group_number and module:
-        if has_group_submitted(group_number, module):
-            st.error(f"❌ Group {group_number} has already submitted for {module}. Only one submission per module is allowed.")
-            st.info("If you need to resubmit due to an error, please contact your instructor.")
-            submission_blocked = True
-
     # Main submission logic
-    if uploaded_file and group_number and module and not submission_blocked:
+    if uploaded_file and module:
         # Read content from .docx
         try:
             doc = Document(uploaded_file)
@@ -477,7 +465,7 @@ def main_app():
             st.stop()
 
         # Log the submission
-        if log_submission(module, group_number, analyze_figures):
+        if log_submission(module, "N/A", analyze_figures):
             st.success("✅ Submission logged successfully!")
         else:
             st.warning("⚠️ Submission processed but logging failed. Please contact your instructor.")
@@ -494,19 +482,17 @@ def main_app():
             st.markdown("### 📊 Figure Analysis")
             st.write(image_feedback)
             
-    elif not submission_blocked:
-        st.info("Please fill out all fields and upload a .docx file to receive feedback.")
+    else:
+        st.info("Please select a module and upload a .docx file to receive feedback.")
 
 # Main app logic
 def main():
-    # Sidebar navigation
-    st.sidebar.title("Navigation")
-    page = st.sidebar.selectbox("Choose a page:", ["Student Submission", "Admin Panel"])
-    
-    if page == "Student Submission":
-        main_app()
-    elif page == "Admin Panel":
+    # Check for admin access via query parameter
+    params = st.query_params
+    if params.get("admin") == "true":
         admin_panel()
+    else:
+        main_app()
 
 if __name__ == "__main__":
     main()
