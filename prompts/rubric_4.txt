@@ -63,12 +63,12 @@ Approved labels:
 - Non-physiological remedy suggested (replace with parameter-based action)
 - Enhancement suggestion  ← use if needed to reach ≥2 items
 
-**Social & Economic Harm**
+**Social Harm**
 Approved labels:
 - Likelihood/magnitude rating missing
-- Time/visit burden not estimated (frequency/duration not stated)
-- Travel/equipment/work-loss costs not considered
-- Mitigation/monitoring plan missing (reduce sessions; shorten duration; schedule flexibility)
+- Stigmatization or reputation risk not considered (e.g., study involves stigmatized populations or sensitive health conditions)
+- Community or group-level harms not addressed (e.g., results could be misused to stereotype or marginalize a group)
+- Mitigation/monitoring plan missing (e.g., anonymization strategy, group-level communication plan, de-identification of sensitive data)
 - Methods/harms mismatch
 - Good idea lacks citation  ← add Link (if certain)
 - Non-physiological remedy suggested (replace with parameter-based action)
@@ -86,19 +86,17 @@ Approved labels:
 - Non-physiological remedy suggested (replace with parameter-based action)
 - Enhancement suggestion  ← use if needed to reach ≥2 items
 
-**Legal Harm**
-Rules specific to this harm:
-- You MUST include **at least two items labeled: Design-specific legal risk idea (Methods-anchored)**.
-- **Methods-anchored requirement:** Each of these two items must **quote at least one exact term/phrase from the Methods** (e.g., a drug/device/procedure/test name, workload/intensity, timing, sample or data type). Quote it inside the item (either in the main line or the Revise by line).
-
-Approved labels (use as appropriate):
+**Economic Harm**
+Approved labels:
 - Likelihood/magnitude rating missing
-- Legal risk not tied to a protocol step or data element
-- Handling of regulated materials/procedures not addressed (e.g., prescription agents, biological samples, medical devices, maximal exercise clearance)
-- Mitigation/monitoring plan missing (qualification, authorization, onsite oversight, documentation)
+- Time/visit burden not estimated (frequency/duration/number of sessions not stated)
+- Travel, equipment, or work-loss costs not considered (e.g., repeated lab visits, specialized equipment, childcare)
+- Income loss or productivity impact not addressed (e.g., participants missing work or school)
+- Mitigation/monitoring plan missing (e.g., reduce sessions; shorten duration; offer scheduling flexibility; assess whether compensation is adequate)
 - Methods/harms mismatch
 - Good idea lacks citation  ← add Link (if certain)
-- **Design-specific legal risk idea (Methods-anchored)**  ← include ≥2 such items, each with an actionable **Revise by** and (if certain) a link
+- Non-physiological remedy suggested (replace with parameter-based action)
+- Enhancement suggestion  ← use if needed to reach ≥2 items
 
 FINAL BLOCK — REFERENCES AND STATEMENT OF CONTRIBUTIONS
 (Output this block after the four harms. Do not use the item template here.)
@@ -115,8 +113,7 @@ FINAL BLOCK — REFERENCES AND STATEMENT OF CONTRIBUTIONS
   - If **Yes**: “Present — content not evaluated.”
 
 END BEHAVIOR
-- Output the four harms (in the order above), each with **≥2 items**, then the **References and Statement of Contributions** block.
-- In **Legal Harm**, always include **≥2 Design-specific legal risk idea (Methods-anchored)** items that quote Methods terms.
+- Output the four harms in this order: Psychological Harm, Social Harm, Physical Harm, Economic Harm. Each must have **≥2 items**. Then output the **References and Statement of Contributions** block.
 - If a harm is genuinely excellent, still provide **Enhancement suggestion** items (parameter-based) so the block has ≥2 items.
 
 === END POLICY ===

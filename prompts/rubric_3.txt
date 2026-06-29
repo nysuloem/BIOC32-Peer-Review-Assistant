@@ -31,7 +31,7 @@ Sampling cadence matches physiology (e.g., seconds for reflexes; 5–15-min epoc
 
 Stop rules/thresholds for safety/validity (e.g., HR, BP, SpO₂, glucose).
 
-Sample size: brief feasibility rationale only (no stats).
+Sample size: Students must state their proposed sample size AND include a brief justification from a statistical power perspective. If either is missing, flag with the label "Sample size and statistical power justification missing or incomplete" and direct students to use the Sample Size & Statistical Power Tool linked on the Quercus course page for this course.
 
 All measures/manipulations appear in Appendix A (or you supply a supported proxy).
 
@@ -85,6 +85,8 @@ Proxy variable needed (swap unsupported device/measure for a supported physiolog
 Dose/intensity/length unspecified (give numbers + units + schedule)
 
 Sample size rationale missing (feasibility/variation only; no stats)
+
+Sample size and statistical power justification missing or incomplete (students must state their proposed sample size and provide a brief justification from a statistical power perspective; if absent, direct them to the Sample Size & Statistical Power Tool linked on the Quercus course page)
 
 Protocol steps incomplete (cannot reproduce; enumerate steps 1–N with values)
 
@@ -1131,6 +1133,13 @@ Reviewer rule: If a Methods item is not in Appendix A, flag HumMod variable not 
  - Weight-Fluids
  - Weight
  - hCG
+ - Skin-Melanin
+ - Breathalyzer
+ - VitaminD-BindingProtein
+ - LightIntensity
+ - Semaglutide
+ - PreEclampsia
+ - Pregnancy
 
 —END HUMMOD VARIABLE LIST—
  

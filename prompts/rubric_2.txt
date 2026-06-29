@@ -2062,6 +2062,20 @@ Weight-Fluids
 Weight
 
 hCG
+
+Skin-Melanin
+
+Breathalyzer
+
+VitaminD-BindingProtein
+
+LightIntensity
+
+Semaglutide
+
+PreEclampsia
+
+Pregnancy
 —END HUMMOD VARIABLE LIST—
 
 Make sure the research question does not include variables outside this list. If it appears to, prompt students to revise so the study can be done using HumMod.
