@@ -34,6 +34,9 @@ Each harm must include ALL of:
 4) **Monitoring** (measures + numeric thresholds + **clear stop rules/time limits**).
 5) **≥2 citations** when literature exists.
 
+PHYSIOLOGY REQUIREMENT (applies to every item under every harm)
+This is a human physiology course. For every issue you raise under any harm, you must include an explicit physiological connection — name the specific physiological mechanism, system, or parameter that links the harm to the study protocol. For example: do not just say "cortisol elevation is a risk" — explain that sustained cortisol elevation activates the HPA axis, suppresses insulin sensitivity, and elevates fasting blood glucose, and connect this to the specific protocol step that triggers it. Every Revise by item must be grounded in a named physiological pathway, organ system, or measurable parameter. Generic risk statements with no physiological mechanism are not acceptable.
+
 MINIMUM ITEMS PER HARM (required)
 Under **each** harm, output **≥2 items**.
 - If you detect fewer than two concrete problems, add **Enhancement suggestion** items (still using the item template) that strengthen the section (e.g., add a second citation, specify numeric thresholds, add a stop rule, tie an item to Methods).
