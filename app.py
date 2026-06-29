@@ -225,7 +225,7 @@ def analyze_images_with_gpt4_vision(images, module):
         messages.append({
             "role": "user",
             "content": [
-                {"type": "text", "text": f"Figure {i+1}:"},
+                {"type": "text", "text": f"Figure {i+1} of {len(images)}:"},
                 {
                     "type": "image_url",
                     "image_url": {
@@ -236,11 +236,21 @@ def analyze_images_with_gpt4_vision(images, module):
             ]
         })
 
+    # Final instruction to ensure all figures are reviewed
+    messages.append({
+        "role": "user",
+        "content": (
+            f"There are {len(images)} figure(s) in total. You MUST provide a feedback block for every "
+            f"single one of them — Figure 1 through Figure {len(images)}. Do not stop after the first figure. "
+            "If a figure looks good and has no issues, say so explicitly and name the specific strengths."
+        )
+    })
+
     try:
         response = openai.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            max_tokens=1500
+            max_tokens=3000
         )
         return response.choices[0].message.content
     except Exception as e:
