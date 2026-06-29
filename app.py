@@ -2,8 +2,10 @@ import streamlit as st
 import openai
 import os
 import csv
-import time
 import base64
+import re
+import requests
+import urllib.parse
 from datetime import datetime
 from docx import Document
 from docx.document import Document as DocumentType
@@ -13,6 +15,8 @@ from docx.table import _Cell, Table
 from docx.text.paragraph import Paragraph
 from PIL import Image
 import io
+import pdfplumber
+import fitz  # PyMuPDF
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -21,10 +25,14 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Configuration
 SUBMISSION_LOG = "submission_log.csv"
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")  # Change this in your .env file
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
+
+# ─────────────────────────────────────────────
+# Submission log helpers
+# ─────────────────────────────────────────────
 
 def load_submissions():
-    """Load submission data from CSV file"""
     submissions = []
     if os.path.exists(SUBMISSION_LOG):
         try:
@@ -37,62 +45,37 @@ def load_submissions():
     return submissions
 
 def save_submissions(submissions):
-    """Save submission data to CSV file"""
     try:
         with open(SUBMISSION_LOG, mode='w', newline='', encoding='utf-8') as file:
-            if submissions:
-                fieldnames = ["timestamp", "module", "groupnumber", "included_figures"]
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                writer.writeheader()
-                for submission in submissions:
-                    writer.writerow(submission)
-            else:
-                # Create empty file with headers
-                fieldnames = ["timestamp", "module", "groupnumber", "included_figures"]
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                writer.writeheader()
+            fieldnames = ["timestamp", "module", "groupnumber", "included_figures"]
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            for submission in submissions:
+                writer.writerow(submission)
         return True
     except Exception as e:
         st.error(f"Error saving submissions: {e}")
         return False
 
-def has_group_submitted(group_number, module):
-    """Check if a group has already submitted for a specific module"""
-    submissions = load_submissions()
-    
-    for submission in submissions:
-        if (submission.get('groupnumber', '') == str(group_number) and 
-            submission.get('module', '') == module):
-            return True
-    
-    return False
-
 def log_submission(module, group_number, included_figures):
-    """Log a new submission to the CSV file"""
     submissions = load_submissions()
-    
     new_submission = {
         "timestamp": datetime.now().isoformat(),
         "module": module,
         "groupnumber": str(group_number),
         "included_figures": str(included_figures)
     }
-    
     submissions.append(new_submission)
     return save_submissions(submissions)
 
 def get_submission_stats(submissions):
-    """Calculate submission statistics"""
     if not submissions:
         return {"total": 0, "unique_groups": 0, "modules_with_submissions": 0}
-    
     unique_groups = set()
     unique_modules = set()
-    
     for submission in submissions:
         unique_groups.add(submission.get('groupnumber', ''))
         unique_modules.add(submission.get('module', ''))
-    
     return {
         "total": len(submissions),
         "unique_groups": len(unique_groups),
@@ -100,7 +83,6 @@ def get_submission_stats(submissions):
     }
 
 def get_submissions_by_module(submissions):
-    """Group submissions by module"""
     modules = {}
     for submission in submissions:
         module = submission.get('module', '')
@@ -110,78 +92,140 @@ def get_submissions_by_module(submissions):
     return modules
 
 def format_timestamp(timestamp_str):
-    """Format timestamp for display"""
     try:
         dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
         return dt.strftime('%Y-%m-%d %H:%M:%S')
     except:
         return timestamp_str
 
-def extract_images_from_docx(doc):
-    """Extract all images from a Word document"""
+
+# ─────────────────────────────────────────────
+# Google Docs helpers
+# ─────────────────────────────────────────────
+
+def extract_gdoc_id(url):
+    """Extract the document ID from a Google Docs URL."""
+    patterns = [
+        r'/document/d/([a-zA-Z0-9_-]+)',
+        r'id=([a-zA-Z0-9_-]+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+def fetch_gdoc_as_docx(doc_id):
+    """Download a Google Doc as a .docx file (bytes)."""
+    export_url = f"https://docs.google.com/document/d/{doc_id}/export?format=docx"
+    response = requests.get(export_url, timeout=30)
+    if response.status_code == 200:
+        return io.BytesIO(response.content)
+    elif response.status_code == 403:
+        raise PermissionError(
+            "Could not access this Google Doc. Please make sure sharing is set to "
+            "'Anyone with the link can view' before submitting."
+        )
+    else:
+        raise RuntimeError(
+            f"Failed to download Google Doc (HTTP {response.status_code}). "
+            "Check that the link is correct and the document is shared publicly."
+        )
+
+
+# ─────────────────────────────────────────────
+# PDF helpers
+# ─────────────────────────────────────────────
+
+def extract_text_from_pdf(pdf_bytes):
+    """Extract all text from a PDF using pdfplumber."""
+    text_parts = []
+    with pdfplumber.open(pdf_bytes) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text_parts.append(page_text)
+    return "\n".join(text_parts)
+
+def extract_images_from_pdf(pdf_bytes):
+    """Extract all images from a PDF using PyMuPDF (fitz)."""
     images = []
-    
-    # Get all relationships in the document
+    pdf_bytes.seek(0)
+    doc = fitz.open(stream=pdf_bytes.read(), filetype="pdf")
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        for img_index, img in enumerate(page.get_images(full=True)):
+            xref = img[0]
+            base_image = doc.extract_image(xref)
+            image_bytes = base_image["image"]
+            try:
+                pil_image = Image.open(io.BytesIO(image_bytes))
+                if pil_image.width > 100 and pil_image.height > 100:  # skip tiny icons
+                    images.append(pil_image)
+            except Exception:
+                continue
+    return images
+
+
+# ─────────────────────────────────────────────
+# docx helpers
+# ─────────────────────────────────────────────
+
+def extract_images_from_docx(doc):
+    """Extract all images from a Word document."""
+    images = []
     for rel in doc.part.rels.values():
         if "image" in rel.target_ref:
             try:
-                # Get the image data
                 image_data = rel.target_part.blob
-                # Convert to PIL Image
                 image = Image.open(io.BytesIO(image_data))
                 images.append(image)
             except Exception as e:
                 st.warning(f"Could not extract an image: {e}")
-                continue
-    
     return images
 
+
+# ─────────────────────────────────────────────
+# OpenAI vision helper
+# ─────────────────────────────────────────────
+
 def encode_image_for_api(image):
-    """Convert PIL Image to base64 string for API"""
+    """Convert PIL Image to base64 string for API."""
     buffer = io.BytesIO()
-    # Convert to RGB if necessary (for compatibility)
     if image.mode in ("RGBA", "P"):
         image = image.convert("RGB")
     image.save(buffer, format="JPEG")
-    img_str = base64.b64encode(buffer.getvalue()).decode()
-    return img_str
+    return base64.b64encode(buffer.getvalue()).decode()
 
 def analyze_images_with_gpt4_vision(images, module):
-    """Analyze images using GPT-4 Vision"""
+    """Analyze images using GPT-4 Vision."""
     if not images:
         return "No figures found in the document."
-    
-    # Load image analysis prompt from file
+
     image_prompt_file_path = f"prompts/image_rubric_{module.split(' ')[0]}.txt"
     try:
         with open(image_prompt_file_path, 'r', encoding='utf-8') as f:
             prompt = f.read()
     except FileNotFoundError:
-        # Fall back to a default prompt if specific module prompt doesn't exist
         try:
             with open("prompts/image_rubric_default.txt", 'r', encoding='utf-8') as f:
                 prompt = f.read()
         except FileNotFoundError:
             prompt = "Analyze these figures and provide feedback on clarity, appropriateness, and professional presentation standards."
-    
-    # Prepare messages for API call
+
     messages = [
         {
             "role": "system",
             "content": f"You are an expert peer reviewer evaluating scientific figures. {prompt}"
         }
     ]
-    
-    # Add each image to the message
+
     for i, image in enumerate(images):
         base64_image = encode_image_for_api(image)
         messages.append({
             "role": "user",
             "content": [
-                {
-                    "type": "text",
-                    "text": f"Figure {i+1}:"
-                },
+                {"type": "text", "text": f"Figure {i+1}:"},
                 {
                     "type": "image_url",
                     "image_url": {
@@ -191,10 +235,10 @@ def analyze_images_with_gpt4_vision(images, module):
                 }
             ]
         })
-    
+
     try:
         response = openai.chat.completions.create(
-            model="gpt-4o",  # Use gpt-4o for vision capabilities
+            model="gpt-4o",
             messages=messages,
             max_tokens=1500
         )
@@ -202,14 +246,18 @@ def analyze_images_with_gpt4_vision(images, module):
     except Exception as e:
         return f"Error analyzing images: {e}"
 
+
+# ─────────────────────────────────────────────
+# Admin panel
+# ─────────────────────────────────────────────
+
 def admin_panel():
-    """Admin interface for managing submissions"""
+    """Admin interface for managing submissions."""
     st.header("🔧 Admin Panel")
-    
-    # Password protection
+
     if 'admin_authenticated' not in st.session_state:
         st.session_state.admin_authenticated = False
-    
+
     if not st.session_state.admin_authenticated:
         password = st.text_input("Enter admin password:", type="password")
         if st.button("Login"):
@@ -220,35 +268,28 @@ def admin_panel():
             else:
                 st.error("Invalid password!")
         return
-    
-    # Load current submissions
+
     submissions = load_submissions()
-    
+
     if not submissions:
         st.info("No submissions found.")
         if st.button("🚪 Logout", type="secondary"):
             st.session_state.admin_authenticated = False
             st.rerun()
         return
-    
-    # Display submission statistics
+
     st.subheader("📊 Submission Statistics")
     stats = get_submission_stats(submissions)
     col1, col2, col3 = st.columns(3)
-    
     with col1:
         st.metric("Total Submissions", stats["total"])
-    
     with col2:
         st.metric("Unique Groups", stats["unique_groups"])
-    
     with col3:
         st.metric("Modules with Submissions", stats["modules_with_submissions"])
-    
-    # Display submissions by module
+
     st.subheader("📋 Submissions by Module")
     modules_data = get_submissions_by_module(submissions)
-    
     for module in sorted(modules_data.keys()):
         module_submissions = modules_data[module]
         with st.expander(f"{module} ({len(module_submissions)} submissions)"):
@@ -262,62 +303,56 @@ def admin_panel():
                     st.write(f"**Figures:** {submission.get('included_figures', 'N/A')}")
                 if i < len(module_submissions) - 1:
                     st.divider()
-    
-    # Management options
+
     st.subheader("🛠️ Management Options")
-    
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.write("**Remove specific submission:**")
         if submissions:
-            # Create selection options
             selection_options = []
             for i, submission in enumerate(submissions):
                 display_text = f"Group {submission.get('groupnumber', 'N/A')} - {submission.get('module', 'N/A')} ({format_timestamp(submission.get('timestamp', ''))})"
                 selection_options.append((i, display_text))
-            
+
             selected_index = st.selectbox(
                 "Select submission to remove:",
                 options=[opt[0] for opt in selection_options],
                 format_func=lambda x: next(opt[1] for opt in selection_options if opt[0] == x)
             )
-            
+
             if st.button("🗑️ Remove Selected Submission", type="secondary"):
                 if 'confirm_single_removal' not in st.session_state:
                     st.session_state.confirm_single_removal = False
-                
                 if not st.session_state.confirm_single_removal:
                     st.session_state.confirm_single_removal = True
                     st.warning("Click again to confirm removal.")
                     st.rerun()
                 else:
-                    # Remove the selected submission
                     updated_submissions = [sub for i, sub in enumerate(submissions) if i != selected_index]
                     if save_submissions(updated_submissions):
                         st.success("Submission removed successfully!")
                         st.session_state.confirm_single_removal = False
                         st.rerun()
-    
+
     with col2:
         st.write("**Reset specific group/module:**")
         reset_group = st.text_input("Group number to reset:")
         reset_module = st.selectbox("Module to reset:", [
             "All modules",
             "2 - Research Questions",
-            "3 - Study Design", 
+            "3 - Study Design",
             "4 - Human Research Ethics",
             "5 - Presenting Results",
             "6 - Discussion Section"
         ])
-        
+
         if st.button("🔄 Reset Group Submissions", type="secondary"):
             if not reset_group:
                 st.warning("Please enter a group number.")
             else:
                 if 'confirm_group_reset' not in st.session_state:
                     st.session_state.confirm_group_reset = False
-                
                 if not st.session_state.confirm_group_reset:
                     st.session_state.confirm_group_reset = True
                     if reset_module == "All modules":
@@ -326,26 +361,22 @@ def admin_panel():
                         st.warning(f"Click again to confirm removal of Group {reset_group}'s submission for {reset_module}.")
                     st.rerun()
                 else:
-                    # Filter submissions
                     if reset_module == "All modules":
                         updated_submissions = [sub for sub in submissions if sub.get('groupnumber', '') != reset_group]
                         success_msg = f"All submissions for Group {reset_group} removed!"
                     else:
-                        updated_submissions = [sub for sub in submissions 
-                                             if not (sub.get('groupnumber', '') == reset_group and 
+                        updated_submissions = [sub for sub in submissions
+                                             if not (sub.get('groupnumber', '') == reset_group and
                                                    sub.get('module', '') == reset_module)]
                         success_msg = f"Group {reset_group}'s submission for {reset_module} removed!"
-                    
                     if save_submissions(updated_submissions):
                         st.success(success_msg)
                         st.session_state.confirm_group_reset = False
                         st.rerun()
-    
-    # Danger zone
+
     st.subheader("⚠️ Danger Zone")
     with st.expander("Reset All Submissions", expanded=False):
         st.warning("This will delete ALL submission records. This action cannot be undone!")
-        
         confirm_text = st.text_input("Type 'RESET ALL' to confirm:")
         if st.button("🚨 RESET ALL SUBMISSIONS", type="primary"):
             if confirm_text == "RESET ALL":
@@ -354,11 +385,9 @@ def admin_panel():
                     st.rerun()
             else:
                 st.error("Please type 'RESET ALL' to confirm.")
-    
-    # Export data
+
     st.subheader("📥 Export Data")
     if submissions:
-        # Create CSV string
         output = io.StringIO()
         fieldnames = ["timestamp", "module", "groupnumber", "included_figures"]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
@@ -366,25 +395,31 @@ def admin_panel():
         for submission in submissions:
             writer.writerow(submission)
         csv_data = output.getvalue()
-        
         st.download_button(
             label="📥 Download Submission Data (CSV)",
             data=csv_data,
             file_name=f"submissions_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv"
         )
-    
-    # Logout button
+
     if st.button("🚪 Logout", type="secondary"):
         st.session_state.admin_authenticated = False
         st.rerun()
 
-def main_app():
-    """Main application interface"""
-    st.title("AI Peer Reviewer for BIOC32")
-    st.markdown("This AI Peer Reviewer will provide feedback to help you improve your submission before it is evaluated by the teaching assistants. It will not provide a grade for your submission.")
 
-    # Dropdown for module selection
+# ─────────────────────────────────────────────
+# Main app
+# ─────────────────────────────────────────────
+
+def main_app():
+    """Main application interface."""
+    st.title("AI Peer Reviewer for BIOC32")
+    st.markdown(
+        "This AI Peer Reviewer will provide feedback to help you improve your submission "
+        "before it is evaluated by the teaching assistants. It will not provide a grade for your submission."
+    )
+
+    # Module selection
     module = st.selectbox("Select Module", [
         "2 - Research Questions",
         "3 - Study Design",
@@ -393,101 +428,167 @@ def main_app():
         "6 - Discussion Section"
     ])
 
-    # Show question-specific prompt when module 3 is selected
     if module == "3 - Study Design":
         st.info("Please make sure you have included your full introduction at the start of the document so the AI Peer Review Assistant can properly assess whether your experimental design is appropriate to answer your research question.")
-
-    # Show ethics-specific prompt when module 4 is selected
     if module == "4 - Human Research Ethics":
         st.info("Please make sure you have included the full experimental design at the start of the document so the AI Peer Review Assistant can properly evaluate your ethics review.")
-
-    # Show figure-specific prompt for results module
     if module == "5 - Presenting Results":
-        st.info("This module includes analysis of figures and graphs. Make sure your figures are embedded in the Word document with proper labels (e.g., 'Figure 1'), descriptive captions, axis labels, and appropriate formatting.")
-
-    # Show Module 5 results prompt for discussion section
+        st.info("This module includes analysis of figures and graphs. Make sure your figures are embedded in the document with proper labels (e.g., 'Figure 1'), descriptive captions, axis labels, and appropriate formatting.")
     if module == "6 - Discussion Section":
         st.info("Please make sure you have your full results (text and figures) at the start of the document so the AI Peer Review Assistant can evaluate your interpretation of the results.")
 
-    # Only analyze figures for Module 5
     analyze_figures = (module == "5 - Presenting Results")
 
-    # File upload
-    uploaded_file = st.file_uploader("Upload your .docx file (Word only). If you used Google Docs, download it as a Word file first and upload it here.", type="docx")
+    # ── Submission method tabs ──
+    tab_docx, tab_pdf, tab_gdoc = st.tabs(["📄 Upload Word (.docx)", "📑 Upload PDF", "🔗 Google Docs link"])
 
-    # Main submission logic
-    if uploaded_file and module:
-        # Read content from .docx
-        try:
-            doc = Document(uploaded_file)
-            full_text = "\n".join([para.text for para in doc.paragraphs])
-        except Exception as e:
-            st.error(f"Could not read file: {e}")
-            st.stop()
+    full_text = None
+    images = []
+    source_label = ""
 
-        # Extract and analyze images if requested (only for Module 5)
-        image_feedback = ""
-        if analyze_figures:
-            with st.spinner("Extracting and analyzing figures..."):
-                try:
+    # ── Tab 1: Word upload ──
+    with tab_docx:
+        uploaded_docx = st.file_uploader(
+            "Upload your .docx file. If you used Google Docs, use the Google Docs tab instead.",
+            type="docx",
+            key="docx_upload"
+        )
+        if uploaded_docx:
+            try:
+                doc = Document(uploaded_docx)
+                full_text = "\n".join([para.text for para in doc.paragraphs])
+                if analyze_figures:
                     images = extract_images_from_docx(doc)
-                    if images:
-                        st.success(f"Found {len(images)} figure(s) in the document.")
-                        image_feedback = analyze_images_with_gpt4_vision(images, module)
-                    else:
-                        image_feedback = "No figures were found in the document. If you have figures, make sure they are properly embedded in the Word document."
+                source_label = "Word document"
+            except Exception as e:
+                st.error(f"Could not read Word file: {e}")
+
+    # ── Tab 2: PDF upload ──
+    with tab_pdf:
+        st.info(
+            "PDF support works best for text content. "
+            "If your document contains figures (Module 5), a Word file or Google Doc will give more reliable figure analysis."
+        )
+        uploaded_pdf = st.file_uploader(
+            "Upload your PDF file.",
+            type="pdf",
+            key="pdf_upload"
+        )
+        if uploaded_pdf:
+            try:
+                pdf_bytes = io.BytesIO(uploaded_pdf.read())
+                full_text = extract_text_from_pdf(pdf_bytes)
+                if not full_text.strip():
+                    st.error("No text could be extracted from this PDF. It may be a scanned image. Please upload a Word file instead.")
+                    full_text = None
+                else:
+                    source_label = "PDF"
+                    if analyze_figures:
+                        pdf_bytes.seek(0)
+                        images = extract_images_from_pdf(pdf_bytes)
+            except Exception as e:
+                st.error(f"Could not read PDF: {e}")
+
+    # ── Tab 3: Google Docs link ──
+    with tab_gdoc:
+        st.info(
+            "Paste a Google Docs link below. Make sure sharing is set to "
+            "**'Anyone with the link can view'** — otherwise the import will fail."
+        )
+        gdoc_url = st.text_input("Google Docs URL", placeholder="https://docs.google.com/document/d/...")
+        fetch_button = st.button("Import from Google Docs")
+
+        if fetch_button and gdoc_url:
+            doc_id = extract_gdoc_id(gdoc_url)
+            if not doc_id:
+                st.error("Could not find a valid document ID in that URL. Please check the link and try again.")
+            else:
+                try:
+                    with st.spinner("Importing from Google Docs..."):
+                        docx_bytes = fetch_gdoc_as_docx(doc_id)
+                        doc = Document(docx_bytes)
+                        full_text = "\n".join([para.text for para in doc.paragraphs])
+                        if analyze_figures:
+                            images = extract_images_from_docx(doc)
+                        source_label = "Google Doc"
+                        st.success("Google Doc imported successfully!")
+                except PermissionError as e:
+                    st.error(str(e))
                 except Exception as e:
-                    st.warning(f"Could not analyze figures: {e}")
-                    image_feedback = "Figure analysis was not available for this submission."
+                    st.error(f"Could not import Google Doc: {e}")
 
-        # Load rubric prompt
-        rubric_file_path = f"prompts/rubric_{module.split(' ')[0]}.txt"
-        try:
-            with open(rubric_file_path, 'r', encoding='utf-8') as f:
-                rubric_prompt = f.read()
-        except FileNotFoundError:
-            st.error("Rubric prompt file not found. Please check the prompts directory.")
-            st.stop()
-
-        # Call OpenAI API for text analysis
-        try:
-            with st.spinner("Analyzing text content..."):
-                response = openai.chat.completions.create(
-                    model="gpt-4-turbo",
-                    messages=[
-                        {"role": "system", "content": rubric_prompt},
-                        {"role": "user", "content": full_text}
-                    ]
-                )
-                text_feedback = response.choices[0].message.content
-        except Exception as e:
-            st.error(f"OpenAI API error: {e}")
-            st.stop()
-
-        # Log the submission
-        if log_submission(module, "N/A", analyze_figures):
-            st.success("✅ Submission logged successfully!")
+    # ── Analysis ──
+    if full_text:
+        if not full_text.strip():
+            st.warning("The document appears to be empty. Please check your file and try again.")
         else:
-            st.warning("⚠️ Submission processed but logging failed. Please contact your instructor.")
+            # Figure analysis (Module 5 only)
+            image_feedback = ""
+            if analyze_figures:
+                with st.spinner("Extracting and analyzing figures..."):
+                    try:
+                        if images:
+                            st.success(f"Found {len(images)} figure(s) in the document.")
+                            image_feedback = analyze_images_with_gpt4_vision(images, module)
+                        else:
+                            image_feedback = (
+                                "No figures were found in the document. "
+                                "If you have figures, make sure they are properly embedded "
+                                f"in your {source_label}."
+                            )
+                    except Exception as e:
+                        st.warning(f"Could not analyze figures: {e}")
+                        image_feedback = "Figure analysis was not available for this submission."
 
-        # Display the feedback
-        st.subheader("Peer Review Feedback")
-        
-        # Text feedback
-        st.markdown("### 📝 Content Analysis")
-        st.write(text_feedback)
-        
-        # Figure feedback if available (only for Module 5)
-        if analyze_figures and image_feedback:
-            st.markdown("### 📊 Figure Analysis")
-            st.write(image_feedback)
-            
-    else:
-        st.info("Please select a module and upload a .docx file to receive feedback.")
+            # Load rubric
+            rubric_file_path = f"prompts/rubric_{module.split(' ')[0]}.txt"
+            try:
+                with open(rubric_file_path, 'r', encoding='utf-8') as f:
+                    rubric_prompt = f.read()
+            except FileNotFoundError:
+                st.error("Rubric prompt file not found. Please check the prompts directory.")
+                st.stop()
 
-# Main app logic
+            # Call OpenAI
+            try:
+                with st.spinner("Analyzing content..."):
+                    response = openai.chat.completions.create(
+                        model="gpt-4-turbo",
+                        messages=[
+                            {"role": "system", "content": rubric_prompt},
+                            {"role": "user", "content": full_text}
+                        ]
+                    )
+                    text_feedback = response.choices[0].message.content
+            except Exception as e:
+                st.error(f"OpenAI API error: {e}")
+                st.stop()
+
+            # Log submission
+            log_submission(module, "N/A", analyze_figures)
+            st.success("✅ Submission Successfully Reviewed. See Feedback Below.")
+
+            # Display feedback
+            st.subheader("Peer Review Feedback")
+            st.markdown("### 📝 Content Analysis")
+            st.write(text_feedback)
+
+            if analyze_figures and image_feedback:
+                st.markdown("### 📊 Figure Analysis")
+                st.write(image_feedback)
+
+    elif not any([
+        st.session_state.get("docx_upload"),
+        st.session_state.get("pdf_upload"),
+    ]):
+        st.info("Please select a module and submit your document using one of the tabs above.")
+
+
+# ─────────────────────────────────────────────
+# Entry point
+# ─────────────────────────────────────────────
+
 def main():
-    # Check for admin access via query parameter
     params = st.query_params
     if params.get("admin") == "true":
         admin_panel()
